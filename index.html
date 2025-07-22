@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Global Chat Room</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/dark-mode.css" id="dark-mode-style" disabled>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-storage-compat.js"></script>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Auth Screens -->
+        <div id="auth-container" class="auth-container">
+            <div class="auth-tabs">
+                <button class="tab-button active" id="login-tab">Login</button>
+                <button class="tab-button" id="register-tab">Register</button>
+            </div>
+            
+            <div id="login-form" class="auth-form">
+                <h2>Welcome Back</h2>
+                <input type="text" id="login-username" placeholder="Username" required>
+                <input type="password" id="login-password" placeholder="Password" required>
+                <button id="login-button" class="auth-button">Login</button>
+                <p id="login-error" class="error-message"></p>
+            </div>
+            
+            <div id="register-form" class="auth-form" style="display: none;">
+                <h2>Create Account</h2>
+                <input type="text" id="register-username" placeholder="Username" required>
+                <input type="password" id="register-password" placeholder="Password" required>
+                <select id="register-country" required>
+                    <option value="">Select Country</option>
+                    <!-- Countries will be populated by JS -->
+                </select>
+                <input type="number" id="register-age" placeholder="Age" min="13" max="120" required>
+                <select id="register-language" required>
+                    <option value="">Select Native Language</option>
+                    <option value="en">English</option>
+                    <option value="es">Spanish</option>
+                    <option value="fr">French</option>
+                    <option value="de">German</option>
+                    <option value="ar">Arabic</option>
+                    <option value="zh">Chinese</option>
+                    <option value="ja">Japanese</option>
+                    <option value="ru">Russian</option>
+                    <option value="pt">Portuguese</option>
+                    <option value="hi">Hindi</option>
+                </select>
+                <button id="register-button" class="auth-button">Register</button>
+                <p id="register-error" class="error-message"></p>
+            </div>
+        </div>
+        
+        <!-- Main App (hidden initially) -->
+        <div id="app-container" class="app-main" style="display: none;">
+            <div class="sidebar">
+                <div class="sidebar-header">
+                    <div class="user-profile">
+                        <img id="user-avatar" src="images/default-avatar.png" alt="User Avatar">
+                        <span id="sidebar-username"></span>
+                    </div>
+                    <button id="theme-toggle" class="icon-button"><i class="fas fa-moon"></i></button>
+                </div>
+                
+                <div class="sidebar-menu">
+                    <button class="menu-button active" data-section="global-chat">
+                        <i class="fas fa-globe"></i> Global Chat
+                    </button>
+                    <button class="menu-button" data-section="group-chat">
+                        <i class="fas fa-users"></i> Groups
+                    </button>
+                    <button class="menu-button" data-section="explore-users">
+                        <i class="fas fa-search"></i> Explore
+                    </button>
+                    <button class="menu-button" data-section="user-profile">
+                        <i class="fas fa-user"></i> Profile
+                    </button>
+                </div>
+                
+                <div class="sidebar-footer">
+                    <button id="logout-button" class="logout-button">
+                        <i class="fas fa-sign-out-alt"></i> Logout
+                    </button>
+                </div>
+            </div>
+            
+            <div class="main-content">
+                <!-- Global Chat Section -->
+                <div id="global-chat" class="content-section active">
+                    <div class="chat-header">
+                        <h2>Global Chat Room</h2>
+                        <div id="typing-indicator"></div>
+                    </div>
+                    <div id="chat-messages" class="chat-messages"></div>
+                    <div class="chat-input">
+                        <div class="emoji-picker-container">
+                            <button id="emoji-picker-button" class="icon-button"><i class="far fa-smile"></i></button>
+                            <div id="emoji-picker" class="emoji-picker"></div>
+                        </div>
+                        <input type="text" id="message-input" placeholder="Type your message...">
+                        <label for="image-upload" class="icon-button upload-button">
+                            <i class="fas fa-image"></i>
+                            <input type="file" id="image-upload" accept="image/*" style="display: none;">
+                        </label>
+                        <button id="send-button" class="send-button">Send</button>
+                    </div>
+                </div>
+                
+                <!-- Group Chat Section -->
+                <div id="group-chat" class="content-section">
+                    <div class="group-chat-container">
+                        <div class="group-list">
+                            <h3>Your Groups</h3>
+                            <button id="create-group-button" class="action-button">Create New Group</button>
+                            <div id="user-groups"></div>
+                        </div>
+                        <div class="group-chat-view">
+                            <div id="active-group-header" class="group-header">
+                                <h3 id="active-group-name">Select a group</h3>
+                                <p id="active-group-description"></p>
+                            </div>
+                            <div id="group-messages" class="chat-messages"></div>
+                            <div class="chat-input">
+                                <input type="text" id="group-message-input" placeholder="Type your message..." disabled>
+                                <button id="send-group-button" class="send-button" disabled>Send</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Explore Users Section -->
+                <div id="explore-users" class="content-section">
+                    <h2>Explore Users</h2>
+                    <div class="search-container">
+                        <input type="text" id="user-search" placeholder="Search by username, country, or language">
+                        <button id="search-button" class="icon-button"><i class="fas fa-search"></i></button>
+                    </div>
+                    <div id="users-list" class="users-list"></div>
+                </div>
+                
+                <!-- User Profile Section -->
+                <div id="user-profile" class="content-section">
+                    <div class="profile-container">
+                        <div class="profile-header">
+                            <img id="profile-avatar" src="images/default-avatar.png" alt="Profile Avatar">
+                            <h2 id="profile-username"></h2>
+                            <p id="profile-country"></p>
+                            <p id="profile-language"></p>
+                            <p id="profile-age"></p>
+                        </div>
+                        <div class="profile-stats">
+                            <div class="stat-item">
+                                <span id="followers-count">0</span>
+                                <span>Followers</span>
+                            </div>
+                            <div class="stat-item">
+                                <span id="following-count">0</span>
+                                <span>Following</span>
+                            </div>
+                        </div>
+                        <div class="profile-actions">
+                            <button id="edit-profile-button" class="action-button">Edit Profile</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Create Group Modal -->
+        <div id="create-group-modal" class="modal">
+            <div class="modal-content">
+                <span class="close-modal">&times;</span>
+                <h2>Create New Group</h2>
+                <input type="text" id="group-name" placeholder="Group Name" required>
+                <textarea id="group-description" placeholder="Group Description"></textarea>
+                <input type="text" id="invite-user" placeholder="Invite by Username">
+                <div id="invited-users"></div>
+                <button id="confirm-create-group" class="action-button">Create Group</button>
+            </div>
+        </div>
+        
+        <!-- Edit Profile Modal -->
+        <div id="edit-profile-modal" class="modal">
+            <div class="modal-content">
+                <span class="close-modal">&times;</span>
+                <h2>Edit Profile</h2>
+                <input type="text" id="edit-username" placeholder="Username" disabled>
+                <input type="number" id="edit-age" placeholder="Age" min="13" max="120">
+                <select id="edit-country">
+                    <!-- Countries will be populated by JS -->
+                </select>
+                <select id="edit-language">
+                    <option value="en">English</option>
+                    <option value="es">Spanish</option>
+                    <option value="fr">French</option>
+                    <option value="de">German</option>
+                    <option value="ar">Arabic</option>
+                    <option value="zh">Chinese</option>
+                    <option value="ja">Japanese</option>
+                    <option value="ru">Russian</option>
+                    <option value="pt">Portuguese</option>
+                    <option value="hi">Hindi</option>
+                </select>
+                <button id="save-profile-button" class="action-button">Save Changes</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/db.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/chat.js"></script>
+    <script src="js/group.js"></script>
+    <script src="js/social.js"></script>
+    <script src="js/app.js"></script>
+</body>
+                      </html>
